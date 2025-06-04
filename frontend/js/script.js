@@ -797,42 +797,96 @@ document.addEventListener("DOMContentLoaded", function () {
                   const targetLat = parseFloat(directionsButton.dataset.lat);
                   const targetLon = parseFloat(directionsButton.dataset.lon);
 
-                  // Clear previous route
-                  currentMarkers.clearLayers();
-                  if (routePolyline) {
-                      map.removeLayer(routePolyline);
-                      routePolyline = null;
+                  // Show loading state
+                  directionsButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang tìm đường...';
+                  directionsButton.disabled = true;
+
+                  try {
+                      // Clear previous route
+                      currentMarkers.clearLayers();
+                      if (routePolyline) {
+                          map.removeLayer(routePolyline);
+                          routePolyline = null;
+                      }
+                      if (searchLocationMarker) {
+                          map.removeLayer(searchLocationMarker);
+                          searchLocationMarker = null;
+                      }
+                      if (userLocationMarker) {
+                          userLocationMarker.addTo(map);
+                      }
+
+                      // Get real route using OpenRouteService API
+                      const route = await getRealRoute(
+                          userCurrentLocation.lat,
+                          userCurrentLocation.lon,
+                          targetLat,
+                          targetLon
+                      );
+
+                      if (route) {
+                          // Create polyline from route coordinates
+                          routePolyline = L.polyline(route.coordinates, {
+                              color: '#4CAF50',
+                              weight: 6,
+                              opacity: 0.8,
+                              smoothFactor: 1
+                          }).addTo(map);
+
+                          const fieldName = directionsButton.closest('.field-item').querySelector('h3').innerText;
+
+                          // Add start and end markers
+                          L.marker([userCurrentLocation.lat, userCurrentLocation.lon], { icon: startPointIcon })
+                              .addTo(map)
+                              .bindPopup('<b>Điểm xuất phát</b>');
+
+                          L.marker([targetLat, targetLon], { icon: endPointIcon })
+                              .addTo(map)
+                              .bindPopup(`<b>${fieldName}</b>`)
+                              .openPopup();
+
+                          // Fit map to show entire route
+                          map.fitBounds(routePolyline.getBounds().pad(0.1));
+
+                          // Show route information
+                          showRouteInfo(route, fieldName);
+
+                      } else {
+                          // Fallback to straight line if routing fails
+                          const distance = map.distance([userCurrentLocation.lat, userCurrentLocation.lon], [targetLat, targetLon]);
+                          const estimatedTime = Math.round(distance / 1000 * 5);
+
+                          const latlngs = [
+                              [userCurrentLocation.lat, userCurrentLocation.lon],
+                              [targetLat, targetLon]
+                          ];
+
+                          routePolyline = L.polyline(latlngs, {
+                              color: '#FF9800',
+                              weight: 4,
+                              opacity: 0.8,
+                              dashArray: '10, 10'
+                          }).addTo(map);
+
+                          const fieldName = directionsButton.closest('.field-item').querySelector('h3').innerText;
+
+                          L.marker([targetLat, targetLon], { icon: endPointIcon })
+                              .addTo(map)
+                              .bindPopup(`<b>${fieldName}</b>`)
+                              .openPopup();
+
+                          map.fitBounds(routePolyline.getBounds().pad(0.1));
+
+                          alert(`Không thể tìm đường đi chi tiết. Hiển thị đường thẳng:\nKhoảng cách: ${(distance / 1000).toFixed(2)} km\nThời gian ước tính: ${estimatedTime} phút.`);
+                      }
+
+                  } catch (error) {
+
+                  } finally {
+                      // Reset button state
+                      directionsButton.innerHTML = '<i class="fas fa-directions"></i> Chỉ đường';
+                      directionsButton.disabled = false;
                   }
-                  if (searchLocationMarker) {
-                      map.removeLayer(searchLocationMarker);
-                      searchLocationMarker = null;
-                  }
-                  if (userLocationMarker) {
-                      userLocationMarker.addTo(map);
-                  }
-
-                  // Mock route calculation (replace with real routing API)
-                  const distance = map.distance([userCurrentLocation.lat, userCurrentLocation.lon], [targetLat, targetLon]);
-                  const estimatedTime = Math.round(distance / 1000 * 5); // Assuming 5 minutes per km
-
-                  // Create simple straight line route (replace with real routing)
-                  const latlngs = [
-                      [userCurrentLocation.lat, userCurrentLocation.lon],
-                      [targetLat, targetLon]
-                  ];
-
-                  routePolyline = L.polyline(latlngs, { color: '#4CAF50', weight: 6, opacity: 0.8 }).addTo(map);
-
-                  const fieldName = directionsButton.closest('.field-item').querySelector('h3').innerText;
-
-                  L.marker([targetLat, targetLon], { icon: endPointIcon })
-                    .addTo(map)
-                    .bindPopup(`<b>${fieldName}</b>`)
-                    .openPopup();
-
-                  map.fitBounds(routePolyline.getBounds().pad(0.1));
-
-                  alert(`Đã tìm thấy tuyến đường! Khoảng cách: ${(distance / 1000).toFixed(2)} km, Thời gian ước tính: ${estimatedTime} phút.`);
               });
 
               searchResults.appendChild(fieldItem);
@@ -1100,3 +1154,235 @@ document.addEventListener("DOMContentLoaded", function () {
   // Initialize manual location button when page loads
   setTimeout(addManualLocationButton, 1000);
 });
+
+// Function to get real route using OpenRouteService API
+async function getRealRoute(startLat, startLon, endLat, endLon) {
+    try {
+        // Using OpenRouteService (free tier: 2000 requests/day)
+        // You can also use MapBox, Google Maps, or other routing services
+        const apiKey = '5b3ce3597851110001cf6248YOUR_API_KEY_HERE'; // Replace with your API key
+
+        // Alternative: Use OSRM (Open Source Routing Machine) - no API key needed
+        const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${startLon},${startLat};${endLon},${endLat}?overview=full&geometries=geojson&steps=true`;
+
+        const response = await fetch(osrmUrl);
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.routes && data.routes.length > 0) {
+            const route = data.routes[0];
+            const coordinates = route.geometry.coordinates.map(coord => [coord[1], coord[0]]); // Convert [lon, lat] to [lat, lon]
+
+            return {
+                coordinates: coordinates,
+                distance: route.distance, // in meters
+                duration: route.duration, // in seconds
+                steps: route.legs[0].steps || []
+            };
+        }
+
+        return null;
+
+    } catch (error) {
+        console.error('Error fetching route:', error);
+
+        // Fallback: Try alternative routing service
+        try {
+            return await getRouteFromAlternativeService(startLat, startLon, endLat, endLon);
+        } catch (fallbackError) {
+            console.error('Fallback routing also failed:', fallbackError);
+            return null;
+        }
+    }
+}
+
+// Alternative routing service (GraphHopper)
+async function getRouteFromAlternativeService(startLat, startLon, endLat, endLon) {
+    // Using GraphHopper API (free tier available)
+    const apiKey = 'YOUR_GRAPHHOPPER_API_KEY'; // Replace with your API key
+    const url = `https://graphhopper.com/api/1/route?point=${startLat},${startLon}&point=${endLat},${endLon}&vehicle=car&locale=vi&calc_points=true&key=${apiKey}`;
+
+    const response = await fetch(url);
+
+    if (!response.ok) {
+        throw new Error(`GraphHopper API error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (data.paths && data.paths.length > 0) {
+        const path = data.paths[0];
+
+        // Decode the polyline points
+        const coordinates = decodePolyline(path.points);
+
+        return {
+            coordinates: coordinates,
+            distance: path.distance,
+            duration: path.time,
+            steps: path.instructions || []
+        };
+    }
+
+    return null;
+}
+
+// Function to decode polyline (for GraphHopper)
+function decodePolyline(str, precision = 5) {
+    let index = 0,
+        lat = 0,
+        lng = 0,
+        coordinates = [],
+        shift = 0,
+        result = 0,
+        byte = null,
+        latitude_change,
+        longitude_change,
+        factor = Math.pow(10, precision);
+
+    while (index < str.length) {
+        byte = null;
+        shift = 0;
+        result = 0;
+
+        do {
+            byte = str.charCodeAt(index++) - 63;
+            result |= (byte & 0x1f) << shift;
+            shift += 5;
+        } while (byte >= 0x20);
+
+        latitude_change = ((result & 1) ? ~(result >> 1) : (result >> 1));
+
+        shift = result = 0;
+
+        do {
+            byte = str.charCodeAt(index++) - 63;
+            result |= (byte & 0x1f) << shift;
+            shift += 5;
+        } while (byte >= 0x20);
+
+        longitude_change = ((result & 1) ? ~(result >> 1) : (result >> 1));
+
+        lat += latitude_change;
+        lng += longitude_change;
+
+        coordinates.push([lat / factor, lng / factor]);
+    }
+
+    return coordinates;
+}
+
+// Function to show route information
+function showRouteInfo(route, fieldName) {
+    const distanceKm = (route.distance / 1000).toFixed(2);
+    const durationMin = Math.round(route.duration / 60);
+
+    // Create route info popup
+    let routeInfoModal = document.getElementById('routeInfoModal');
+    if (!routeInfoModal) {
+        routeInfoModal = document.createElement('div');
+        routeInfoModal.id = 'routeInfoModal';
+        routeInfoModal.innerHTML = `
+            <div class="modal-backdrop" onclick="closeRouteInfoModal()">
+                <div class="modal-content" onclick="event.stopPropagation()" style="max-width: 500px; padding: 25px; background: white; border-radius: 15px; color: black;">
+                    <h3 style="margin-top: 0; color: #28a745; display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-route"></i> Thông tin đường đi
+                    </h3>
+                    <div id="routeDetails" style="margin: 20px 0;"></div>
+                    <div style="text-align: center; margin-top: 25px;">
+                        <button onclick="closeRouteInfoModal()" style="background: #007bff; color: white; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                            <i class="fas fa-check"></i> Đã hiểu
+                        </button>
+                        <button onclick="openInGoogleMaps()" style="background: #28a745; color: white; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; font-weight: 600; margin-left: 10px;">
+                            <i class="fab fa-google"></i> Mở Google Maps
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        routeInfoModal.style.cssText = `
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+        `;
+
+        const backdrop = routeInfoModal.querySelector('.modal-backdrop');
+        backdrop.style.cssText = `
+            background-color: rgba(0, 0, 0, 0.5);
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        `;
+
+        document.body.appendChild(routeInfoModal);
+    }
+
+    // Update route details
+    const routeDetails = document.getElementById('routeDetails');
+    routeDetails.innerHTML = `
+        <div style="background: linear-gradient(135deg, #f8f9fa, #e9ecef); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+            <h4 style="margin: 0 0 15px 0; color: #2c3e50;">Đến: ${fieldName}</h4>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div style="text-align: center; padding: 15px; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <i class="fas fa-road" style="font-size: 24px; color: #007bff; margin-bottom: 8px;"></i>
+                    <div style="font-size: 18px; font-weight: bold; color: #2c3e50;">${distanceKm} km</div>
+                    <div style="font-size: 12px; color: #6c757d;">Khoảng cách</div>
+                </div>
+                <div style="text-align: center; padding: 15px; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <i class="fas fa-clock" style="font-size: 24px; color: #28a745; margin-bottom: 8px;"></i>
+                    <div style="font-size: 18px; font-weight: bold; color: #2c3e50;">${durationMin} phút</div>
+                    <div style="font-size: 12px; color: #6c757d;">Thời gian</div>
+                </div>
+            </div>
+        </div>
+
+        ${route.steps && route.steps.length > 0 ? `
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; max-height: 200px; overflow-y: auto;">
+                <h5 style="margin: 0 0 10px 0; color: #495057;">Hướng dẫn chi tiết:</h5>
+                <ol style="margin: 0; padding-left: 20px; font-size: 14px; color: #6c757d;">
+                    ${route.steps.slice(0, 8).map(step => `
+                        <li style="margin-bottom: 5px;">${step.instruction || step.maneuver?.instruction || 'Tiếp tục di chuyển'}</li>
+                    `).join('')}
+                    ${route.steps.length > 8 ? '<li style="color: #007bff; font-style: italic;">... và thêm các bước khác</li>' : ''}
+                </ol>
+            </div>
+        ` : ''}
+    `;
+
+    // Store route data for Google Maps integration
+    window.currentRouteData = {
+        start: { lat: userCurrentLocation.lat, lng: userCurrentLocation.lon },
+        end: { lat: route.coordinates[route.coordinates.length - 1][0], lng: route.coordinates[route.coordinates.length - 1][1] },
+        fieldName: fieldName
+    };
+
+    routeInfoModal.style.display = 'block';
+}
+
+// Function to close route info modal
+function closeRouteInfoModal() {
+    const modal = document.getElementById('routeInfoModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// Function to open route in Google Maps
+function openInGoogleMaps() {
+    if (window.currentRouteData) {
+        const { start, end, fieldName } = window.currentRouteData;
+        const googleMapsUrl = `https://www.google.com/maps/dir/${start.lat},${start.lng}/${end.lat},${end.lng}/@${start.lat},${start.lng},15z/data=!3m1!4b1!4m2!4m1!3e0`;
+        window.open(googleMapsUrl, '_blank');
+    }
+}
