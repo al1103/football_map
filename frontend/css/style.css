@@ -224,7 +224,7 @@ input[type="number"]:focus {
 .container {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh; /* Changed from min-height to height */
   margin: 20px;
   border-radius: 25px;
   overflow: hidden;
@@ -242,6 +242,7 @@ header {
   align-items: center;
   position: relative;
   overflow: hidden;
+  flex-shrink: 0; /* Prevent header from shrinking */
 }
 
 header::before {
@@ -331,28 +332,29 @@ header h1 i {
 /* Main Content Layout */
 .main-content {
   display: flex;
-  flex: 1;
+  flex: 1; /* Take remaining space */
   background: #f8f9fa;
+  overflow: hidden; /* Prevent content from overflowing */
 }
 
 .sidebar {
   width: 400px;
   background: white;
-  padding: 30px;
   box-shadow: 5px 0 15px rgba(0, 0, 0, 0.1);
-  overflow-y: auto;
+  border-right: 1px solid #e9ecef;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid #e9ecef;
+  height: 100%; /* Take full height of main-content */
+  overflow: hidden; /* Hide overflow to enable controlled scrolling */
 }
 
-/* Search Box */
+/* Search Box - Fixed at top */
 .search-box {
   background: linear-gradient(135deg, #f8f9fa, #e9ecef);
   padding: 25px;
-  border-radius: 20px;
-  margin-bottom: 30px;
+  border-radius: 0 0 20px 20px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  flex-shrink: 0; /* Prevent search box from shrinking */
 }
 
 .search-box input[type="text"] {
@@ -419,6 +421,14 @@ header h1 i {
   transform: none;
 }
 
+/* Scrollable content area */
+.sidebar-content {
+  flex: 1;
+  padding: 30px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
 /* Sidebar Content */
 .sidebar h2 {
   margin: 0 0 25px 0;
@@ -427,6 +437,7 @@ header h1 i {
   font-weight: 700;
   position: relative;
   padding-bottom: 15px;
+  flex-shrink: 0;
 }
 
 .sidebar h2::after {
@@ -443,6 +454,7 @@ header h1 i {
 #searchResults {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding-right: 10px;
 }
 
@@ -450,7 +462,6 @@ header h1 i {
 #map {
   flex: 1;
   height: 100%;
-  min-height: 600px;
   border-radius: 0 0 20px 0;
   overflow: hidden;
 }
@@ -640,6 +651,7 @@ header h1 i {
     margin: 0;
     border-radius: 0;
     box-shadow: none;
+    height: 100vh;
   }
 
   .modal-content {
@@ -672,24 +684,28 @@ header h1 i {
 
   .main-content {
     flex-direction: column;
+    height: calc(100vh - 140px); /* Adjust for mobile header height */
   }
 
   .sidebar {
     width: 100%;
     order: 2;
-    max-height: 400px;
+    height: 50%; /* Take half of available space on mobile */
+  }
+
+  .sidebar-content {
     padding: 20px;
   }
 
   #map {
     order: 1;
-    height: 400px;
+    height: 50%; /* Take half of available space on mobile */
     border-radius: 0;
   }
 
   .search-box {
     padding: 20px;
-    margin-bottom: 20px;
+    border-radius: 0;
   }
 
   .search-box button {
@@ -721,7 +737,7 @@ header h1 i {
     font-size: 1.5em;
   }
 
-  .sidebar {
+  .sidebar-content {
     padding: 15px;
   }
 

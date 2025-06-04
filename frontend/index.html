@@ -124,6 +124,7 @@
         <div class="main-content">
             <!-- Sidebar -->
             <aside class="sidebar">
+                <!-- Fixed Search Box -->
                 <div class="search-box">
                     <input type="text" id="searchInput" placeholder="🔍 Tìm kiếm sân bóng, địa điểm..." />
 
@@ -140,16 +141,19 @@
                     </button>
                 </div>
 
-                <h2>
-                    <i class="fas fa-map-marker-alt"></i>
-                    Kết quả tìm kiếm
-                </h2>
+                <!-- Scrollable Content -->
+                <div class="sidebar-content">
+                    <h2>
+                        <i class="fas fa-map-marker-alt"></i>
+                        Kết quả tìm kiếm
+                    </h2>
 
-                <div id="searchResults">
-                    <div class="empty-state">
-                        <i class="fas fa-search"></i>
-                        <h3>Chưa có kết quả</h3>
-                        <p>Đăng nhập và tìm kiếm để xem danh sách sân bóng</p>
+                    <div id="searchResults">
+                        <div class="empty-state">
+                            <i class="fas fa-search"></i>
+                            <h3>Chưa có kết quả</h3>
+                            <p>Đăng nhập và tìm kiếm để xem danh sách sân bóng</p>
+                        </div>
                     </div>
                 </div>
             </aside>
