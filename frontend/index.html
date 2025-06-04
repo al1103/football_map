@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Football Field Finder - Tìm Sân Bóng Đá</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+
+    <!-- Leaflet Awesome Markers -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css" />
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css" />
+
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚽</text></svg>">
+</head>
+<body>
+    <!-- Login Modal -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeLoginModal()">&times;</span>
+            <h2><i class="fas fa-sign-in-alt"></i> Đăng nhập</h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">
+                        <i class="fas fa-user"></i> Tên đăng nhập
+                    </label>
+                    <input type="text" id="username" name="username" placeholder="Nhập tên đăng nhập..." required>
+                </div>
+                <div class="form-group">
+                    <label for="password">
+                        <i class="fas fa-lock"></i> Mật khẩu
+                    </label>
+                    <input type="password" id="password" name="password" placeholder="Nhập mật khẩu..." required>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-sign-in-alt"></i> Đăng nhập
+                    </button>
+                    <button type="button" class="btn-secondary" onclick="showRegisterForm()">
+                        <i class="fas fa-user-plus"></i> Đăng ký
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Register Modal -->
+    <div id="registerModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeRegisterModal()">&times;</span>
+            <h2><i class="fas fa-user-plus"></i> Đăng ký</h2>
+            <form id="registerForm">
+                <div class="form-group">
+                    <label for="regUsername">
+                        <i class="fas fa-user"></i> Tên đăng nhập
+                    </label>
+                    <input type="text" id="regUsername" name="username" placeholder="Chọn tên đăng nhập..." required>
+                </div>
+                <div class="form-group">
+                    <label for="regEmail">
+                        <i class="fas fa-envelope"></i> Email
+                    </label>
+                    <input type="email" id="regEmail" name="email" placeholder="Nhập email của bạn..." required>
+                </div>
+                <div class="form-group">
+                    <label for="regPassword">
+                        <i class="fas fa-lock"></i> Mật khẩu
+                    </label>
+                    <input type="password" id="regPassword" name="password" placeholder="Tạo mật khẩu..." required>
+                </div>
+                <div class="form-group">
+                    <label for="regConfirmPassword">
+                        <i class="fas fa-lock"></i> Xác nhận mật khẩu
+                    </label>
+                    <input type="password" id="regConfirmPassword" name="confirmPassword" placeholder="Nhập lại mật khẩu..." required>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-user-plus"></i> Đăng ký
+                    </button>
+                    <button type="button" class="btn-secondary" onclick="showLoginForm()">
+                        <i class="fas fa-sign-in-alt"></i> Đã có tài khoản
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <h1>
+                <i class="fas fa-futbol"></i>
+                Football Field Finder
+            </h1>
+            <div class="user-controls">
+                <div id="userInfo" class="user-info" style="display: none;">
+                    <span id="welcomeMessage">Chào bạn!</span>
+                    <button id="logoutButton" class="btn-logout">
+                        <i class="fas fa-sign-out-alt"></i> Đăng xuất
+                    </button>
+                </div>
+                <div id="authButtons" class="auth-buttons">
+                    <button id="loginButton" class="btn-login">
+                        <i class="fas fa-sign-in-alt"></i> Đăng nhập
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="🔍 Tìm kiếm sân bóng, địa điểm..." />
+
+                    <button id="searchButton">
+                        <i class="fas fa-search"></i> Tìm kiếm
+                    </button>
+
+                    <button id="showAllFieldsButton">
+                        <i class="fas fa-list"></i> Tất cả sân bóng
+                    </button>
+
+                    <button id="locateMeButton">
+                        <i class="fas fa-location-arrow"></i> Vị trí của tôi
+                    </button>
+                </div>
+
+                <h2>
+                    <i class="fas fa-map-marker-alt"></i>
+                    Kết quả tìm kiếm
+                </h2>
+
+                <div id="searchResults">
+                    <div class="empty-state">
+                        <i class="fas fa-search"></i>
+                        <h3>Chưa có kết quả</h3>
+                        <p>Đăng nhập và tìm kiếm để xem danh sách sân bóng</p>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Map -->
+            <div id="map"></div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <script src="js/script.js"></script>
+</body>
+</html>
